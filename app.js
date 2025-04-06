@@ -14,34 +14,51 @@ const fs = require('fs-extra');
 
 const app = express();
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'uploads');
-const doctorUploadsDir = path.join(__dirname, 'uploads/doctors');
-
-// Use ensureDirSync from fs-extra to create directories if they don't exist
-fs.ensureDirSync(uploadsDir);
-fs.ensureDirSync(doctorUploadsDir);
+// Only create upload directories in development, not needed for serverless
+if (process.env.NODE_ENV !== 'production') {
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(__dirname, 'uploads');
+  const doctorUploadsDir = path.join(__dirname, 'uploads/doctors');
+  
+  // Use ensureDirSync from fs-extra to create directories if they don't exist
+  fs.ensureDirSync(uploadsDir);
+  fs.ensureDirSync(doctorUploadsDir);
+  
+  // For local development, serve static files from uploads directory
+  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+}
 
 //Middleware connect
 app.use(cors()); 
 app.use(express.json());
 app.use("/users",router);
 app.use("/hospitals", hospitalRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/doctors', doctorRoutes);
 
-mongoose.connect(process.env.MONGODB_URI)
-.then(()=> console.log("connected to MongoDB"))
-.then(() => {
-    app.listen(process.env.PORT || 5000, () => {
-      console.log(`Server is running on http://localhost:${process.env.PORT || 5000}`);
-    });
+// Set mongoose connection options
+mongoose.set('strictQuery', false);
+
+// Connect to MongoDB with proper serverless options
+mongoose.connect(process.env.MONGODB_URI, {
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s
+  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
 })
-.catch((err)=> {
-    console.error("MongoDB connection error:", err);
-    process.exit(1);
+.then(() => console.log("Connected to MongoDB"))
+.catch((err) => {
+  console.error("MongoDB connection error:", err);
 });
 
+// In serverless environments, we don't need to explicitly listen on a port
+// Vercel will handle that for us
+// Only listen on a port in local development
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(process.env.PORT || 5000, () => {
+    console.log(`Server is running on http://localhost:${process.env.PORT || 5000}`);
+  });
+}
+
+// For Vercel serverless, export the app
+module.exports = app;
 
 //register-----------------------------------
 // call register model
@@ -113,9 +130,32 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Add root route handler to check server status
+// Add uncaught exception handler
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+  // Don't exit the process in serverless environment
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+});
+
+// Add unhandled rejection handler
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION:', err);
+  // Don't exit the process in serverless environment
+  if (process.env.NODE_ENV !== 'production') {
+    process.exit(1);
+  }
+});
+
+// Root route handler - Add more diagnostic info
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'MediConnect API is running' });
+  res.status(200).json({ 
+    status: 'ok', 
+    message: 'MediConnect API is running',
+    environment: process.env.NODE_ENV || 'development',
+    serverless: process.env.NODE_ENV === 'production' ? true : false
+  });
 });
 
 // Add specific handling for 404 routes

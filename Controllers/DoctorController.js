@@ -42,8 +42,18 @@ const registerDoctor = async (req, res) => {
 
         // Prepare photo path if file was uploaded
         let photoPath = undefined;
+        let photoData = undefined;
+        
         if (req.file) {
-            photoPath = `uploads/doctors/${req.file.filename}`;
+            // For serverless environment
+            if (process.env.NODE_ENV === 'production') {
+                // Store file data directly in MongoDB (as base64)
+                photoData = req.file.buffer ? req.file.buffer.toString('base64') : undefined;
+                photoPath = 'data:image/jpeg;base64,PHOTO_DATA'; // Placeholder, data will be served dynamically
+            } else {
+                // For local environment
+                photoPath = `uploads/doctors/${req.file.filename}`;
+            }
         }
 
         // Create new doctor
@@ -56,7 +66,8 @@ const registerDoctor = async (req, res) => {
             experience: Number(experience),
             phone,
             hospitalId: req.hospital.id,
-            photo: photoPath
+            photo: photoPath,
+            photoData: photoData // Add this field to your Doctor model
         });
 
         await doctor.save();

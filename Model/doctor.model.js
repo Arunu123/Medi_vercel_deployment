@@ -42,6 +42,9 @@ const doctorSchema = new mongoose.Schema({
     },
     photo: {
         type: String
+    },
+    photoData: {
+        type: String // For storing base64 photo data in serverless environments
     }
 }, {
     timestamps: true
