@@ -28,8 +28,15 @@ if (process.env.NODE_ENV !== 'production') {
   app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 }
 
+const corsOptions = {
+  origin: "*",
+  methods: "GET,PUT,POST,DELETE,OPTIONS",
+  allowedHeaders:
+    "Content-Type, Authorization, Content-Length, X-Requested-With, x-access-token, x-access-id",
+};
+
 //Middleware connect
-app.use(cors()); 
+app.use(cors(corsOptions)); 
 app.use(express.json());
 app.use("/users",router);
 app.use("/hospitals", hospitalRoutes);
