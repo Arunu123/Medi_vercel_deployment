@@ -29,7 +29,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const corsOptions = {
-  origin: "*",
+  origin: "http://localhost:3000",
   methods: "GET,PUT,POST,DELETE,OPTIONS",
   allowedHeaders:
     "Content-Type, Authorization, Content-Length, X-Requested-With, x-access-token, x-access-id",
@@ -37,6 +37,7 @@ const corsOptions = {
 
 //Middleware connect
 app.use(cors(corsOptions)); 
+//app.options("*", cors(corsOptions)); 
 app.use(express.json());
 app.use("/users",router);
 app.use("/hospitals", hospitalRoutes);
